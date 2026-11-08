@@ -2,14 +2,12 @@ import { useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 're
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import MagneticButton from './MagneticButton'
 import { useCursor } from './Cursor'
 import { EASE_OUT_EXPO, GSAP_EASE } from '../lib/motion'
 import { useCountdown } from '../lib/useCountdown'
 import { HERO_CARDS, DROP } from '../data/products'
 
-gsap.registerPlugin(ScrollTrigger)
 const HoloCard = lazy(() => import('./HoloCard'))
 
 /* Split a word into masked letters for the intro stagger. */
@@ -39,7 +37,7 @@ const swap = {
 
 export default function Hero() {
   const root = useRef(null)
-  const scroll = useRef(0) // 0 → 1 across the pinned section, read inside the WebGL loop
+  const scroll = useRef(0) // scroll-driven spin is off; kept at 0
   const progressRef = useRef(null)
   const controlRef = useRef(null)
   const [active, setActive] = useState(0)
@@ -62,39 +60,9 @@ export default function Hero() {
         .from('.hero-card-inner', { scale: 0.6, opacity: 0, filter: 'blur(20px)', duration: 1.8 }, 0.15)
         .from('.hero-meta-inner', { y: 24, opacity: 0, stagger: 0.08, duration: 1 }, 0.6)
 
-      // ── Scroll: pinned, scrubbed choreography ───────────────
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        const spin = { v: 0 }
-        const tl = gsap.timeline({
-          defaults: { ease: 'none' },
-          scrollTrigger: {
-            trigger: root.current,
-            start: 'top top',
-            end: '+=160%',
-            scrub: 1.1,
-            pin: true,
-            anticipatePin: 1,
-          },
-        })
-
-        tl.to(spin, { v: 1, duration: 1, onUpdate: () => (scroll.current = spin.v) }, 0)
-          .to('.hero-row-a', { xPercent: -22, opacity: 0.1, duration: 0.6 }, 0)
-          .to('.hero-row-b', { xPercent: 22, opacity: 0.1, duration: 0.6 }, 0)
-          .to('.hero-meta', { y: -60, opacity: 0, duration: 0.3, stagger: 0.04 }, 0)
-          .to('.hero-card', { scale: 1.35, duration: 0.55, ease: 'power2.inOut' }, 0)
-          .to('.hero-glow', { scale: 1.8, opacity: 1, duration: 0.6 }, 0)
-          .to('.hero-card', { scale: 0.55, opacity: 0, yPercent: -12, duration: 0.4, ease: 'power2.in' }, 0.6)
-          .fromTo(
-            '.hero-reveal',
-            { opacity: 0, scale: 0.92, filter: 'blur(12px)' },
-            { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.35, ease: 'power2.out' },
-            0.65
-          )
-      })
-
+      // Reduced motion: skip straight to the end of the intro.
       mm.add('(prefers-reduced-motion: reduce)', () => {
         intro.progress(1)
-        gsap.set('.hero-reveal', { opacity: 1 })
       })
     }, root)
 
@@ -141,14 +109,6 @@ export default function Hero() {
             />
           </Suspense>
         </div>
-      </div>
-
-      {/* scroll reveal copy */}
-      <div className="hero-reveal pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center px-6 text-center opacity-0">
-        <p className="font-mono text-xs uppercase tracking-[0.24em] text-ember">Pull rate 1 : 4,096</p>
-        <p className="mt-5 max-w-[18ch] font-display text-[clamp(2.2rem,6vw,5.5rem)] font-extrabold leading-[0.95] tracking-[-0.03em]">
-          We rip the packs. You keep the grails.
-        </p>
       </div>
 
       {/* top meta row */}
@@ -251,7 +211,7 @@ export default function Hero() {
       <div className="pointer-events-none absolute bottom-10 left-1/2 z-30 hidden -translate-x-1/2 lg:block">
         <div className="hero-meta">
           <div className="hero-meta-inner flex flex-col items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-ash">
-            Scroll to rip
+            Scroll
             <motion.span
               className="block h-10 w-px origin-top bg-paper/50"
               animate={{ scaleY: [0, 1, 0], originY: [0, 0, 1] }}
