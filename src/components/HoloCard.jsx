@@ -4,10 +4,16 @@ import * as THREE from 'three'
 import { holoVertex, holoFragment } from '../lib/holoShader'
 import { makeFront, makeBack } from '../lib/cardTextures'
 
+export const HOLD = 4.2 // seconds each card holds centre stage
+const TRAVEL = 1.7 // seconds for a card swap
 const CARD_W = 2.5
 const CARD_H = 3.5
 const RADIUS = 0.14
 const damp = THREE.MathUtils.damp
+const smooth = THREE.MathUtils.smoothstep
+const mod = (n, m) => ((n % m) + m) % m
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+const now = () => performance.now() / 1000
 
 function roundedCardGeometry() {
   const s = new THREE.Shape()
@@ -31,6 +37,7 @@ function holoMaterial(map, mask) {
     vertexShader: holoVertex,
     fragmentShader: holoFragment,
     toneMapped: false,
+    transparent: true,
     uniforms: {
       uMap: { value: map },
       uMask: { value: mask },
@@ -39,35 +46,36 @@ function holoMaterial(map, mask) {
       uPointer: { value: new THREE.Vector2() },
       uHover: { value: 0 },
       uIntensity: { value: 1 },
+      uOpacity: { value: 1 },
     },
   })
 }
 
-/* ── The card ─────────────────────────────────────────────────── */
-function Card({ pointer, scroll, onHoverChange }) {
+/* ── One card in the carousel ─────────────────────────────────────
+   Its place on the stage comes from `rel`: 0 = centre, +1 = waiting
+   off to the right, -1 = leaving to the left. Pointer parallax, scroll
+   spin and click-flips only apply while it is the focused card.      */
+function Card({ data, index, count, deck, pointer, scroll, geometry, backTex, onHoverChange }) {
   const group = useRef()
   const hover = useRef(0)
-  const isHovered = useRef(false)
+  const hovered = useRef(false)
   const flips = useRef(0)
   const punch = useRef(0)
+  const par = useRef({ x: 0, y: 0 })
 
-  const geometry = useMemo(roundedCardGeometry, [])
   const [front, back] = useMemo(() => {
-    const [fMap, fMask] = makeFront({ name: 'Emberwing', hp: 210, set: 'HV-007/120' })
-    const [bMap, bMask] = makeBack()
-    return [holoMaterial(fMap, fMask), holoMaterial(bMap, bMask)]
-  }, [])
+    const [map, mask] = makeFront(data)
+    return [holoMaterial(map, mask), holoMaterial(backTex[0], backTex[1])]
+  }, [data, backTex])
 
   useEffect(
     () => () => {
-      geometry.dispose()
-      ;[front, back].forEach((m) => {
-        m.uniforms.uMap.value.dispose()
-        m.uniforms.uMask.value.dispose()
-        m.dispose()
-      })
+      front.uniforms.uMap.value.dispose()
+      front.uniforms.uMask.value.dispose()
+      front.dispose()
+      back.dispose()
     },
-    [geometry, front, back]
+    [front, back]
   )
 
   useFrame((state, dt) => {
@@ -77,41 +85,64 @@ function Card({ pointer, scroll, onHoverChange }) {
     const p = pointer.current
     const s = scroll.current
 
-    // pointer parallax + idle float + scroll-driven spin + click flips
-    const targetY = p.x * 0.55 + s * Math.PI * 2 + flips.current * Math.PI
-    const targetX = -p.y * 0.4 + Math.sin(t * 0.7) * 0.05
-    g.rotation.y = damp(g.rotation.y, targetY, 5, dt)
-    g.rotation.x = damp(g.rotation.x, targetX, 5, dt)
-    g.rotation.z = damp(g.rotation.z, -p.x * 0.06, 4, dt)
-    g.position.x = damp(g.position.x, p.x * 0.25, 3, dt)
-    g.position.y = Math.sin(t * 0.9) * 0.09 + p.y * 0.12
+    let rel = mod(index - deck.current.pos, count)
+    if (rel > count / 2) rel -= count
+    const a = Math.abs(rel)
+    const focus = 1 - smooth(a, 0, 0.7)
+    const vis = 1 - smooth(a, 0.75, 1.3)
 
-    hover.current = damp(hover.current, isHovered.current ? 1 : 0, 6, dt)
+    g.visible = vis > 0.002
+    if (!g.visible) {
+      hovered.current = false
+      return
+    }
+
+    // smoothed "personal" motion: pointer tilt + scroll spin + flips
+    par.current.y = damp(par.current.y, p.x * 0.55 + s * Math.PI * 2 + flips.current * Math.PI, 5, dt)
+    par.current.x = damp(par.current.x, -p.y * 0.4, 5, dt)
+
+    // stage path: arrive from the right/back, exit to the left/back
+    g.rotation.y = -rel * 1.25 + par.current.y * focus
+    g.rotation.x = par.current.x * focus + Math.sin(t * 0.7 + index) * 0.05
+    g.rotation.z = rel * 0.22 - p.x * 0.06 * focus
+    g.position.x = rel * 3.4 + p.x * 0.25 * focus
+    g.position.y = Math.sin(t * 0.9 + index * 1.3) * 0.09 + p.y * 0.12 * focus - a * 0.35
+    g.position.z = -a * 2.6
+
+    hover.current = damp(hover.current, hovered.current ? 1 : 0, 6, dt)
     punch.current = damp(punch.current, 0, 7, dt)
-    const sc = 1 + hover.current * 0.04 + punch.current * 0.08
-    g.scale.setScalar(sc)
+    g.scale.setScalar((0.8 + 0.2 * focus) * (1 + hover.current * 0.04 + punch.current * 0.08))
 
     for (const m of [front, back]) {
       m.uniforms.uTime.value = t
       m.uniforms.uHover.value = hover.current
+      m.uniforms.uOpacity.value = vis
       m.uniforms.uPointer.value.set(p.x, p.y)
     }
   })
 
+  const isActive = () => deck.current.active === index
+
   const handlers = {
     onPointerOver: (e) => {
       e.stopPropagation()
-      isHovered.current = true
-      onHoverChange?.(true)
+      hovered.current = true
+      if (isActive()) deck.current.hovering = true
+      onHoverChange?.(isActive() ? 'Flip' : 'View')
     },
     onPointerOut: () => {
-      isHovered.current = false
-      onHoverChange?.(false)
+      hovered.current = false
+      deck.current.hovering = false
+      onHoverChange?.(null)
     },
     onClick: (e) => {
       e.stopPropagation()
-      flips.current += 1
-      punch.current = 1
+      if (isActive()) {
+        flips.current += 1
+        punch.current = 1
+      } else {
+        deck.current.goTo(index)
+      }
     },
   }
 
@@ -123,9 +154,11 @@ function Card({ pointer, scroll, onHoverChange }) {
   )
 }
 
-/* ── Ember dust orbiting the card ─────────────────────────────── */
-function EmberDust({ count = 700, pointer }) {
+/* ── Dust that takes on the colour of the active card ─────────────── */
+function EmberDust({ count = 700, pointer, deck, cards }) {
   const ref = useRef()
+  const target = useMemo(() => new THREE.Color(), [])
+
   const geometry = useMemo(() => {
     const pos = new Float32Array(count * 3)
     const scale = new Float32Array(count)
@@ -149,7 +182,11 @@ function EmberDust({ count = 700, pointer }) {
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
-        uniforms: { uTime: { value: 0 }, uPx: { value: Math.min(window.devicePixelRatio, 2) } },
+        uniforms: {
+          uTime: { value: 0 },
+          uPx: { value: Math.min(window.devicePixelRatio, 2) },
+          uColor: { value: new THREE.Color(cards[0].colors[0]) },
+        },
         vertexShader: /* glsl */ `
           uniform float uTime; uniform float uPx;
           attribute float aScale;
@@ -163,20 +200,23 @@ function EmberDust({ count = 700, pointer }) {
             gl_Position = projectionMatrix * mv;
           }`,
         fragmentShader: /* glsl */ `
+          uniform vec3 uColor;
           varying float vA;
           void main() {
             float d = length(gl_PointCoord - 0.5);
             float a = smoothstep(0.5, 0.0, d) * vA;
-            gl_FragColor = vec4(1.0, 0.45, 0.16, a * 0.8);
+            gl_FragColor = vec4(uColor, a * 0.8);
           }`,
       }),
-    []
+    [cards]
   )
 
   useEffect(() => () => (geometry.dispose(), material.dispose()), [geometry, material])
 
   useFrame((state, dt) => {
     material.uniforms.uTime.value = state.clock.elapsedTime
+    target.set(cards[deck.current.active].colors[0])
+    material.uniforms.uColor.value.lerp(target, 1 - Math.exp(-2.5 * dt))
     if (ref.current) {
       ref.current.rotation.y += dt * 0.05
       ref.current.rotation.x = damp(ref.current.rotation.x, pointer.current.y * 0.15, 2, dt)
@@ -186,9 +226,99 @@ function EmberDust({ count = 700, pointer }) {
   return <points ref={ref} geometry={geometry} material={material} />
 }
 
-/* ── Public component ─────────────────────────────────────────── */
-export default function HoloCard({ scroll, onHoverChange }) {
+/* ── Conductor: autoplay timer, eased swaps, idle "autopilot" ──────── */
+function Deck({ cards, rawPointer, scroll, onActiveChange, onHoverChange, progressRef, controlRef }) {
   const pointer = useRef({ x: 0, y: 0 })
+  const geometry = useMemo(roundedCardGeometry, [])
+  const backTex = useMemo(() => makeBack(), [])
+  const N = cards.length
+
+  const deck = useRef({ pos: 0, from: 0, to: 0, start: -1, timer: 0, active: 0, hovering: false, goTo: () => {} })
+
+  useEffect(() => {
+    const d = deck.current
+    const startSwap = (to) => {
+      d.from = d.pos
+      d.to = to
+      d.start = now()
+      d.timer = 0
+    }
+    d.goTo = (i) => {
+      let delta = mod(i - mod(d.to, N), N)
+      if (delta > N / 2) delta -= N
+      if (delta !== 0) startSwap(d.to + delta)
+    }
+    d.next = () => startSwap(d.to + 1)
+    d.prev = () => startSwap(d.to - 1)
+    if (controlRef) controlRef.current = d
+  }, [N, controlRef])
+
+  useEffect(
+    () => () => {
+      geometry.dispose()
+      backTex.forEach((t) => t.dispose())
+    },
+    [geometry, backTex]
+  )
+
+  useFrame((state, dt) => {
+    const d = deck.current
+    const t = state.clock.elapsedTime
+
+    // Autopilot: when nobody touches the mouse for 2s, the card sways by itself.
+    const raw = rawPointer.current
+    const idle = THREE.MathUtils.clamp((now() - raw.last - 2) / 1.5, 0, 1)
+    pointer.current.x = raw.x * (1 - idle) + Math.sin(t * 0.45) * 0.45 * idle
+    pointer.current.y = raw.y * (1 - idle) + Math.sin(t * 0.31 + 1) * 0.3 * idle
+
+    const swapping = d.start >= 0
+    if (!swapping && !d.hovering && scroll.current < 0.02) d.timer += dt
+    if (!swapping && d.timer >= HOLD) d.next()
+
+    if (d.start >= 0) {
+      const k = Math.min(1, (now() - d.start) / TRAVEL)
+      d.pos = d.from + (d.to - d.from) * easeInOutCubic(k)
+      if (k >= 1) {
+        d.pos = d.to
+        d.start = -1
+      }
+    }
+
+    const idx = mod(Math.round(d.pos), N)
+    if (idx !== d.active) {
+      d.active = idx
+      onActiveChange?.(idx)
+    }
+
+    if (progressRef?.current) {
+      progressRef.current.style.transform = `scaleX(${d.start >= 0 ? 0 : Math.min(1, d.timer / HOLD)})`
+    }
+  })
+
+  return (
+    <>
+      {cards.map((c, i) => (
+        <Card
+          key={c.id}
+          data={c}
+          index={i}
+          count={N}
+          deck={deck}
+          pointer={pointer}
+          scroll={scroll}
+          geometry={geometry}
+          backTex={backTex}
+          onHoverChange={onHoverChange}
+        />
+      ))}
+      <EmberDust pointer={pointer} deck={deck} cards={cards} />
+    </>
+  )
+}
+
+/* ── Public component ─────────────────────────────────────────────── */
+export default function HoloCard({ cards, scroll, onActiveChange, onHoverChange, progressRef, controlRef }) {
+  const rawPointer = useRef({ x: 0, y: 0, last: -Infinity })
   const [fontsReady, setFontsReady] = useState(false)
 
   // Card faces are drawn with web fonts, so wait for them before painting.
@@ -205,11 +335,13 @@ export default function HoloCard({ scroll, onHoverChange }) {
     }
   }, [])
 
-  // Track the pointer across the whole viewport, not just the canvas.
   useEffect(() => {
     const onMove = (e) => {
-      pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1
-      pointer.current.y = -((e.clientY / window.innerHeight) * 2 - 1)
+      if (e.pointerType !== 'mouse') return // touch screens keep the autopilot
+      const r = rawPointer.current
+      r.x = (e.clientX / window.innerWidth) * 2 - 1
+      r.y = -((e.clientY / window.innerHeight) * 2 - 1)
+      r.last = now()
     }
     window.addEventListener('pointermove', onMove, { passive: true })
     return () => window.removeEventListener('pointermove', onMove)
@@ -223,8 +355,17 @@ export default function HoloCard({ scroll, onHoverChange }) {
       gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       style={{ background: 'transparent' }}
     >
-      {fontsReady && <Card pointer={pointer} scroll={scroll} onHoverChange={onHoverChange} />}
-      <EmberDust pointer={pointer} />
+      {fontsReady && (
+        <Deck
+          cards={cards}
+          rawPointer={rawPointer}
+          scroll={scroll}
+          onActiveChange={onActiveChange}
+          onHoverChange={onHoverChange}
+          progressRef={progressRef}
+          controlRef={controlRef}
+        />
+      )}
     </Canvas>
   )
 }

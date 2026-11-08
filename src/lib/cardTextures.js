@@ -53,7 +53,8 @@ function drawSigil(ctx, cx, cy, scale, stroke) {
   ctx.restore()
 }
 
-export function makeFront({ name, hp, set }) {
+export function makeFront({ name, hp, set, type, colors, attacks }) {
+  const [accent, light, deep] = colors
   const [c, ctx] = canvas()
   const [m, mx] = canvas()
 
@@ -63,9 +64,9 @@ export function makeFront({ name, hp, set }) {
 
   // gilded frame
   const frame = ctx.createLinearGradient(0, 0, W, H)
-  frame.addColorStop(0, '#FF5A1F')
-  frame.addColorStop(0.5, '#FFC36B')
-  frame.addColorStop(1, '#FF5A1F')
+  frame.addColorStop(0, accent)
+  frame.addColorStop(0.5, light)
+  frame.addColorStop(1, accent)
   ctx.lineWidth = 34
   ctx.strokeStyle = frame
   roundRect(ctx, 17, 17, W - 34, H - 34, 48)
@@ -83,9 +84,9 @@ export function makeFront({ name, hp, set }) {
 
   // art window
   const g = ctx.createRadialGradient(W / 2, ART.y + ART.h * 0.55, 20, W / 2, ART.y + ART.h * 0.5, ART.w * 0.7)
-  g.addColorStop(0, '#FFD08A')
-  g.addColorStop(0.25, '#FF5A1F')
-  g.addColorStop(0.7, '#3A120A')
+  g.addColorStop(0, light)
+  g.addColorStop(0.25, accent)
+  g.addColorStop(0.7, deep)
   g.addColorStop(1, '#0B0A08')
   ctx.save()
   roundRect(ctx, ART.x, ART.y, ART.w, ART.h, 18)
@@ -105,18 +106,14 @@ export function makeFront({ name, hp, set }) {
   ctx.restore()
 
   // type strip
-  ctx.fillStyle = '#FF5A1F'
+  ctx.fillStyle = accent
   ctx.fillRect(ART.x, ART.y + ART.h + 22, ART.w, 6)
   ctx.font = '500 26px "IBM Plex Mono", monospace'
   ctx.fillStyle = '#8A8478'
-  ctx.fillText('EMBER · VAULT EXCLUSIVE · 1ST PRINT', ART.x, ART.y + ART.h + 72)
+  ctx.fillText(type, ART.x, ART.y + ART.h + 72)
 
   // attacks
-  const rows = [
-    ['Kiln Burst', '120'],
-    ['Afterglow', '60'],
-  ]
-  rows.forEach(([a, dmg], i) => {
+  attacks.forEach(([a, dmg], i) => {
     const y = ART.y + ART.h + 170 + i * 120
     ctx.fillStyle = '#F2ECDF'
     ctx.font = '600 54px "Bricolage Grotesque", sans-serif'

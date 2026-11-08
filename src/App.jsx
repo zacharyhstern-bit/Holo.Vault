@@ -1,34 +1,55 @@
 import { useEffect, useState } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { CursorProvider } from './components/Cursor'
 import Nav from './components/Nav'
-import Hero from './components/Hero'
-import Marquee from './components/Marquee'
-import Drops from './components/Drops'
+import Footer from './components/Footer'
+import { PageTransition } from './components/PageShell'
+import Home from './pages/Home'
+import DropsPage from './pages/DropsPage'
+import GradedPage from './pages/GradedPage'
+import SealedPage from './pages/SealedPage'
+import SellPage from './pages/SellPage'
+import NotFound from './pages/NotFound'
 
 export default function App() {
   const [bag, setBag] = useState(0)
+  const location = useLocation()
+  const add = () => setBag((b) => b + 1)
 
   // Web fonts change line heights; re-measure scroll positions once they land.
   useEffect(() => {
     document.fonts?.ready.then(() => ScrollTrigger.refresh())
   }, [])
 
-  const enterVault = () =>
-    document.getElementById('drops')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const page = (el) => (
+    <PageTransition>
+      <main>{el}</main>
+      <Footer />
+    </PageTransition>
+  )
 
   return (
     <CursorProvider>
       <Nav bag={bag} />
-      <main>
-        <Hero onEnter={enterVault} />
-        <Marquee />
-        <Drops onAdd={() => setBag((b) => b + 1)} />
-      </main>
-      <footer className="flex flex-col justify-between gap-4 border-t border-paper/10 px-5 py-10 font-mono text-[11px] uppercase tracking-[0.16em] text-ash md:flex-row md:px-10">
-        <p>© 2026 Holo/Vault — independent reseller</p>
-        <p>Not affiliated with Nintendo, Creatures Inc. or The Pokémon Company.</p>
-      </footer>
+      <AnimatePresence
+        mode="wait"
+        initial={false}
+        onExitComplete={() => {
+          window.scrollTo(0, 0)
+          requestAnimationFrame(() => ScrollTrigger.refresh())
+        }}
+      >
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={page(<Home onAdd={add} />)} />
+          <Route path="/drops" element={page(<DropsPage onAdd={add} />)} />
+          <Route path="/graded" element={page(<GradedPage onAdd={add} />)} />
+          <Route path="/sealed" element={page(<SealedPage onAdd={add} />)} />
+          <Route path="/sell" element={page(<SellPage />)} />
+          <Route path="*" element={page(<NotFound />)} />
+        </Routes>
+      </AnimatePresence>
     </CursorProvider>
   )
 }

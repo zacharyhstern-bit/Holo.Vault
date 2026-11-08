@@ -1,10 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import MagneticButton from './MagneticButton'
 import { useCursor } from './Cursor'
 import { EASE_OUT_EXPO, GSAP_EASE } from '../lib/motion'
+import { useCountdown } from '../lib/useCountdown'
+import { HERO_CARDS, DROP } from '../data/products'
 
 gsap.registerPlugin(ScrollTrigger)
 const HoloCard = lazy(() => import('./HoloCard'))
@@ -22,24 +25,31 @@ function Letters({ text, className = '' }) {
   )
 }
 
-function useCountdown(seconds) {
-  const [left, setLeft] = useState(seconds)
-  useEffect(() => {
-    const end = Date.now() + seconds * 1000
-    const id = setInterval(() => setLeft(Math.max(0, Math.round((end - Date.now()) / 1000))), 1000)
-    return () => clearInterval(id)
-  }, [seconds])
-  const h = String(Math.floor(left / 3600)).padStart(2, '0')
-  const m = String(Math.floor((left % 3600) / 60)).padStart(2, '0')
-  const s = String(left % 60).padStart(2, '0')
-  return `${h}:${m}:${s}`
+const rgba = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
 }
 
-export default function Hero({ onEnter }) {
+const swap = {
+  initial: { y: '100%', opacity: 0 },
+  animate: { y: '0%', opacity: 1 },
+  exit: { y: '-100%', opacity: 0 },
+  transition: { duration: 0.6, ease: EASE_OUT_EXPO },
+}
+
+export default function Hero() {
   const root = useRef(null)
   const scroll = useRef(0) // 0 → 1 across the pinned section, read inside the WebGL loop
+  const progressRef = useRef(null)
+  const controlRef = useRef(null)
+  const [active, setActive] = useState(0)
   const { setOverride } = useCursor()
-  const countdown = useCountdown(2 * 3600 + 14 * 60 + 33)
+  const navigate = useNavigate()
+  const countdown = useCountdown(DROP.opensInSeconds)
+  const card = HERO_CARDS[active]
+
+  // never leave the cursor stuck on "Flip" after navigating away
+  useEffect(() => () => setOverride(null), [setOverride])
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -93,14 +103,18 @@ export default function Hero({ onEnter }) {
 
   return (
     <section ref={root} className="relative h-[100svh] min-h-[640px] w-full overflow-hidden bg-ink">
-      {/* ember glow */}
-      <div
-        aria-hidden
-        className="hero-glow pointer-events-none absolute left-1/2 top-1/2 h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-60 blur-[90px]"
-        style={{ background: 'radial-gradient(circle, rgba(255,90,31,0.45), rgba(255,90,31,0) 65%)' }}
-      />
+      {/* glow takes on the active card's colour */}
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <motion.div
+          aria-hidden
+          className="hero-glow h-[70vmin] w-[70vmin] rounded-full opacity-60 blur-[90px]"
+          initial={false}
+          animate={{ background: `radial-gradient(circle, ${rgba(card.colors[0], 0.45)} 0%, ${rgba(card.colors[0], 0)} 65%)` }}
+          transition={{ duration: 1.6, ease: EASE_OUT_EXPO }}
+        />
+      </div>
 
-      {/* giant type — behind the card */}
+      {/* giant type — behind the cards */}
       <h1 className="pointer-events-none absolute inset-0 z-10 flex select-none flex-col justify-center px-5 font-display font-extrabold uppercase leading-[0.82] tracking-[-0.045em] md:px-10">
         <span className="hero-row-a block text-[clamp(4.2rem,17vw,17rem)]">
           <Letters text="Pull" /> <Letters text="your" className="text-outline" />
@@ -113,11 +127,18 @@ export default function Hero({ onEnter }) {
         </span>
       </h1>
 
-      {/* 3D card — in front of the type */}
+      {/* 3D carousel — in front of the type */}
       <div className="hero-card absolute inset-0 z-20 will-change-transform">
         <div className="hero-card-inner h-full w-full" onPointerLeave={() => setOverride(null)}>
           <Suspense fallback={null}>
-            <HoloCard scroll={scroll} onHoverChange={(on) => setOverride(on ? 'Flip' : null)} />
+            <HoloCard
+              cards={HERO_CARDS}
+              scroll={scroll}
+              progressRef={progressRef}
+              controlRef={controlRef}
+              onActiveChange={setActive}
+              onHoverChange={setOverride}
+            />
           </Suspense>
         </div>
       </div>
@@ -134,64 +155,110 @@ export default function Hero({ onEnter }) {
       <div className="absolute inset-x-0 top-24 z-30 flex justify-between px-5 font-mono text-[11px] uppercase tracking-[0.18em] text-ash md:top-28 md:px-10">
         <div className="hero-meta">
           <div className="hero-meta-inner">
-            <p>Drop 014 — Vault Series</p>
+            <p>
+              Drop {DROP.number} — {DROP.name}
+            </p>
             <p className="mt-1 text-paper">
               Live in <span className="tabular-nums text-ember">{countdown}</span>
             </p>
           </div>
         </div>
-        <div className="hero-meta hidden text-right sm:block">
-          <div className="hero-meta-inner">
-            <p>Graded · Sealed · Singles</p>
-            <p className="mt-1 text-paper">Ships insured in 24h</p>
+
+        {/* carousel index + autoplay progress */}
+        <div className="hero-meta hidden sm:block">
+          <div className="hero-meta-inner flex flex-col items-end gap-3">
+            <p className="tabular-nums text-paper">
+              <span className="relative inline-block h-[1.2em] w-[2ch] overflow-hidden align-bottom">
+                <AnimatePresence initial={false}>
+                  <motion.span key={active} className="absolute inset-0" {...swap}>
+                    {String(active + 1).padStart(2, '0')}
+                  </motion.span>
+                </AnimatePresence>
+              </span>{' '}
+              / {String(HERO_CARDS.length).padStart(2, '0')}
+            </p>
+            <div className="flex gap-1.5">
+              {HERO_CARDS.map((c, i) => (
+                <button
+                  key={c.id}
+                  data-cursor=""
+                  aria-label={`Show ${c.name}`}
+                  onClick={() => controlRef.current?.goTo(i)}
+                  className="group relative h-6 w-9"
+                >
+                  <span className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 overflow-hidden bg-paper/15 transition-colors duration-300 group-hover:bg-paper/40">
+                    {i === active ? (
+                      <span ref={progressRef} className="block h-full origin-left bg-ember" style={{ transform: 'scaleX(0)' }} />
+                    ) : (
+                      <span className={`block h-full ${i < active ? 'bg-paper/50' : ''}`} />
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* bottom row: CTAs + live price chip */}
+      {/* bottom row: CTAs + live price chip for the active card */}
       <div className="absolute inset-x-0 bottom-8 z-30 flex flex-col gap-6 px-5 md:bottom-10 md:flex-row md:items-end md:justify-between md:px-10">
         <div className="hero-meta flex flex-wrap items-center gap-3">
           <div className="hero-meta-inner flex flex-wrap items-center gap-3">
-            <MagneticButton onClick={onEnter} cursor="">
-              Enter the vault
-            </MagneticButton>
-            <MagneticButton variant="ghost" cursor="">
+            <MagneticButton onClick={() => navigate('/drops')}>Enter the vault</MagneticButton>
+            <MagneticButton variant="ghost" onClick={() => navigate('/sell')}>
               Sell your binder
             </MagneticButton>
           </div>
         </div>
 
         <div className="hero-meta">
-          <motion.div
-            className="hero-meta-inner flex items-center gap-5 rounded-2xl border border-paper/10 bg-paper/[0.03] px-5 py-4 backdrop-blur-md"
+          <motion.button
+            onClick={() => navigate('/graded')}
+            className="hero-meta-inner flex min-w-[230px] items-center gap-5 rounded-2xl border border-paper/10 bg-paper/[0.03] px-5 py-4 text-left backdrop-blur-md"
             whileHover={{ y: -4, borderColor: 'rgba(255,90,31,0.5)' }}
+            whileTap={{ scale: 0.97 }}
             transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
             data-cursor="View"
           >
             <span className="relative flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ember opacity-60" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ember" />
+              <span
+                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+                style={{ background: card.colors[0] }}
+              />
+              <span
+                className="relative inline-flex h-2.5 w-2.5 rounded-full transition-colors duration-700"
+                style={{ background: card.colors[0] }}
+              />
             </span>
-            <div className="font-mono text-[11px] uppercase tracking-[0.16em]">
-              <p className="text-ash">Emberwing · PSA 10</p>
-              <p className="mt-1 text-paper">
-                $1,240 <span className="text-ember">▲ 4.2% 7d</span>
-              </p>
+            <div className="relative h-[2.6em] flex-1 overflow-hidden font-mono text-[11px] uppercase leading-[1.3em] tracking-[0.16em]">
+              <AnimatePresence initial={false}>
+                <motion.div key={card.id} className="absolute inset-0" {...swap}>
+                  <p className="text-ash">
+                    {card.name} · {card.grade}
+                  </p>
+                  <p className="text-paper">
+                    ${card.price.toLocaleString()}{' '}
+                    <span style={{ color: card.change.startsWith('▼') ? '#8A8478' : card.colors[0] }}>{card.change}</span>
+                  </p>
+                </motion.div>
+              </AnimatePresence>
             </div>
-          </motion.div>
+          </motion.button>
         </div>
       </div>
 
       {/* scroll cue */}
-      <div className="pointer-events-none absolute bottom-10 left-1/2 z-30 hidden -translate-x-1/2 md:block">
-        <div className="hero-meta"><div className="hero-meta-inner flex flex-col items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-ash">
-          Scroll to rip
-          <motion.span
-            className="block h-10 w-px origin-top bg-paper/50"
-            animate={{ scaleY: [0, 1, 0], originY: [0, 0, 1] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: [0.65, 0, 0.35, 1] }}
-          />
-        </div></div>
+      <div className="pointer-events-none absolute bottom-10 left-1/2 z-30 hidden -translate-x-1/2 lg:block">
+        <div className="hero-meta">
+          <div className="hero-meta-inner flex flex-col items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-ash">
+            Scroll to rip
+            <motion.span
+              className="block h-10 w-px origin-top bg-paper/50"
+              animate={{ scaleY: [0, 1, 0], originY: [0, 0, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: [0.65, 0, 0.35, 1] }}
+            />
+          </div>
+        </div>
       </div>
     </section>
   )
