@@ -1,5 +1,6 @@
 import Hero from '../components/Hero'
 import Marquee from '../components/Marquee'
+import ShuffleDeck from '../components/ShuffleDeck'
 import Drops from '../components/Drops'
 
 export default function Home({ onAdd }) {
@@ -7,6 +8,7 @@ export default function Home({ onAdd }) {
     <>
       <Hero />
       <Marquee />
+      <ShuffleDeck onAdd={onAdd} />
       <Drops onAdd={onAdd} />
     </>
   )
