@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO, EASE_IN_OUT } from '../lib/motion'
+import { useBag } from '../lib/bag'
 
 const LINKS = [
   { to: '/drops', label: 'Drops' },
@@ -28,7 +29,8 @@ function DesktopLink({ to, label }) {
   )
 }
 
-export default function Nav({ bag }) {
+export default function Nav() {
+  const { count: bag, setOpen: openBag, pulse } = useBag()
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
 
@@ -57,12 +59,19 @@ export default function Nav({ bag }) {
 
         <div className="flex items-center gap-2">
           <motion.button
-            data-cursor=""
+            key={pulse}
+            data-cursor="Open"
+            onClick={() => {
+              setOpen(false)
+              openBag(true)
+            }}
+            initial={pulse ? { scale: 1.15 } : false}
+            animate={{ scale: 1 }}
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.94 }}
             transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
             className="flex items-center gap-3 rounded-full border border-paper/20 py-2 pl-4 pr-2 font-mono text-[12px] uppercase tracking-[0.16em]"
-            aria-label={`Bag, ${bag} items`}
+            aria-label={`Open bag, ${bag} items`}
           >
             Bag
             <span className="relative grid h-7 min-w-7 place-items-center overflow-hidden rounded-full bg-ember px-2 text-ink">

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { CursorProvider } from './components/Cursor'
 import Nav from './components/Nav'
+import BagDrawer from './components/BagDrawer'
+import { BagProvider, useBag } from './lib/bag'
 import Footer from './components/Footer'
 import { PageTransition } from './components/PageShell'
 import Home from './pages/Home'
@@ -14,9 +16,16 @@ import SellPage from './pages/SellPage'
 import NotFound from './pages/NotFound'
 
 export default function App() {
-  const [bag, setBag] = useState(0)
+  return (
+    <BagProvider>
+      <Site />
+    </BagProvider>
+  )
+}
+
+function Site() {
   const location = useLocation()
-  const add = () => setBag((b) => b + 1)
+  const { add } = useBag()
 
   // Web fonts change line heights; re-measure scroll positions once they land.
   useEffect(() => {
@@ -32,7 +41,8 @@ export default function App() {
 
   return (
     <CursorProvider>
-      <Nav bag={bag} />
+      <Nav />
+      <BagDrawer />
       <AnimatePresence
         mode="wait"
         initial={false}
