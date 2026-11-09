@@ -6,7 +6,7 @@ import MagneticButton from './MagneticButton'
 import { useCursor } from './Cursor'
 import { EASE_OUT_EXPO, GSAP_EASE } from '../lib/motion'
 import { useCountdown } from '../lib/useCountdown'
-import { HERO_CARDS, DROP } from '../data/products'
+import { HERO_CARDS, DROP, CATEGORIES } from '../data/products'
 
 const HoloCard = lazy(() => import('./HoloCard'))
 
@@ -173,8 +173,8 @@ export default function Hero() {
 
         <div className="hero-meta">
           <motion.button
-            onClick={() => navigate('/graded')}
-            className="hero-meta-inner flex min-w-[230px] items-center gap-5 rounded-2xl border border-paper/10 bg-paper/[0.03] px-5 py-4 text-left backdrop-blur-md"
+            onClick={() => navigate(`/shop/${CATEGORIES.find((c) => c.name === card.category)?.slug ?? ''}`)}
+            className="hero-meta-inner flex min-w-[300px] items-center gap-5 rounded-2xl border border-paper/10 bg-paper/[0.03] px-5 py-4 text-left backdrop-blur-md"
             whileHover={{ y: -4, borderColor: 'rgba(255,90,31,0.5)' }}
             whileTap={{ scale: 0.97 }}
             transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
@@ -192,12 +192,12 @@ export default function Hero() {
             </span>
             <div className="relative h-[2.6em] flex-1 overflow-hidden font-mono text-[11px] uppercase leading-[1.3em] tracking-[0.16em]">
               <AnimatePresence initial={false}>
-                <motion.div key={card.id} className="absolute inset-0" {...swap}>
+                <motion.div key={card.id} className="absolute inset-0 whitespace-nowrap" {...swap}>
                   <p className="text-ash">
-                    {card.name} · {card.grade}
+                    {card.category} · {card.grade}
                   </p>
                   <p className="text-paper">
-                    ${card.price.toLocaleString()}{' '}
+                    {card.name} ${card.price.toLocaleString()}{' '}
                     <span style={{ color: card.change.startsWith('▼') ? '#8A8478' : card.colors[0] }}>{card.change}</span>
                   </p>
                 </motion.div>

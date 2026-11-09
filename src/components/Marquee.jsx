@@ -1,10 +1,4 @@
-const ITEMS = [
-  'PSA · CGC · BGS graded',
-  'Sealed booster boxes',
-  'Authenticated singles',
-  'Ships insured in 24h',
-  'Pokémon TCG — vintage to modern',
-]
+const ITEMS = ['Pokémon', 'Baseball', 'Basketball', 'Hockey', 'Magic: The Gathering', 'PSA · BGS · CGC · SGC', 'Sealed hobby boxes']
 
 export default function Marquee() {
   const row = [...ITEMS, ...ITEMS]

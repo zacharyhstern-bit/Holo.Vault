@@ -60,7 +60,7 @@ export default function Drops({ onAdd }) {
 
       <div className="drops-grid grid gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
         {DROP_ITEMS.slice(0, 3).map((p) => (
-          <ProductCard key={p.id} p={p} onAdd={onAdd} className="drop-card" />
+          <ProductCard key={p.id} p={p} onAdd={onAdd} className="drop-card" showCategory />
         ))}
       </div>
 

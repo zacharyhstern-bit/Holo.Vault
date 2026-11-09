@@ -13,6 +13,7 @@ import DropsPage from './pages/DropsPage'
 import GradedPage from './pages/GradedPage'
 import SealedPage from './pages/SealedPage'
 import SellPage from './pages/SellPage'
+import ShopPage from './pages/ShopPage'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -53,6 +54,8 @@ function Site() {
       >
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={page(<Home onAdd={add} />)} />
+          <Route path="/shop" element={page(<ShopPage onAdd={add} />)} />
+          <Route path="/shop/:category" element={page(<ShopPage onAdd={add} />)} />
           <Route path="/drops" element={page(<DropsPage onAdd={add} />)} />
           <Route path="/graded" element={page(<GradedPage onAdd={add} />)} />
           <Route path="/sealed" element={page(<SealedPage onAdd={add} />)} />

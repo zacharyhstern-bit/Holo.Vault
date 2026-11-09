@@ -38,7 +38,7 @@ export function PageTransition({ children }) {
 }
 
 /** Big masked headline used at the top of every inner page. */
-export function PageHeader({ eyebrow, title, outline, children }) {
+export function PageHeader({ eyebrow, title, outline, children, accent = '#FF5A1F' }) {
   const line = {
     hidden: { y: '105%' },
     show: (i) => ({ y: '0%', transition: { duration: 1.2, ease: EASE_OUT_EXPO, delay: 0.45 + i * 0.08 } }),
@@ -46,7 +46,8 @@ export function PageHeader({ eyebrow, title, outline, children }) {
   return (
     <header className="px-5 pb-16 pt-40 md:px-10 md:pt-48">
       <motion.p
-        className="font-mono text-xs uppercase tracking-[0.24em] text-ember"
+        className="font-mono text-xs uppercase tracking-[0.24em]"
+        style={{ color: accent }}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: EASE_OUT_EXPO, delay: 0.4 }}

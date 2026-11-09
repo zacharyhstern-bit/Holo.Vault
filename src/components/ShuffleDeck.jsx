@@ -3,13 +3,14 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import MagneticButton from './MagneticButton'
-import { DROP_ITEMS, GRADED } from '../data/products'
+import { SHUFFLE_DECK, categoryBySlug } from '../data/products'
+import CardFace from './CardFace'
 import { EASE_OUT_EXPO, SPRING_SOFT, prefersReducedMotion } from '../lib/motion'
 
 gsap.registerPlugin(ScrollTrigger)
 
-// The deck: the current drop plus a few graded extras. Edit products.js to change it.
-const DECK = [...DROP_ITEMS, ...GRADED.filter((g) => ['g6', 'g8', 'g9', 'g7'].includes(g.id))].map((p) => ({
+// The deck: a mix from every category. Edit SHUFFLE_DECK in products.js to change it.
+const DECK = SHUFFLE_DECK.map((p) => ({
   ...p,
   label: p.grader ? `${p.grader} ${p.grade}` : p.grade,
 }))
@@ -39,29 +40,8 @@ function DeckCard({ p, cardRef, innerRef }) {
           </div>
         </div>
         {/* front */}
-        <div className={`${face} border border-paper/15 bg-[#14110D]`} style={{ ...hide, transform: 'rotateY(180deg)' }}>
-          <div
-            className="absolute inset-[7%] bottom-[34%] overflow-hidden rounded-lg"
-            style={{ background: `radial-gradient(circle at 50% 60%, ${p.hue[1]}, ${p.hue[0]} 35%, #0B0A08 80%)` }}
-          >
-            {[0, 1, 2, 3, 4].map((i) => (
-              <span
-                key={i}
-                className="absolute left-1/2 top-[60%] rounded-full border border-ink/40"
-                style={{ width: `${30 + i * 28}%`, aspectRatio: 1, transform: 'translate(-50%,-50%)' }}
-              />
-            ))}
-          </div>
-          <div className="absolute inset-x-[7%] bottom-[8%]">
-            <p className="font-display text-lg font-extrabold leading-tight tracking-[-0.02em]">{p.name}</p>
-            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ash">
-              {p.set} · {p.label}
-            </p>
-          </div>
-          <div
-            className="pointer-events-none absolute inset-0 opacity-40 mix-blend-color-dodge"
-            style={{ background: 'linear-gradient(115deg, transparent 20%, #ffd36b 40%, #6bc8ff 55%, #c86bff 65%, transparent 80%)' }}
-          />
+        <div className={`${face} border border-paper/15`} style={{ ...hide, transform: 'rotateY(180deg)' }}>
+          <CardFace p={p} />
         </div>
       </div>
     </div>
@@ -280,7 +260,7 @@ export default function ShuffleDeck({ onAdd }) {
             Pull.
           </h2>
           <p className="mt-8 max-w-sm font-mono text-xs uppercase leading-relaxed tracking-[0.14em] text-ash">
-            Every card in this deck is real stock from the vault. Draw one — if it's your grail, it's yours.
+            Pokémon, sports and Magic — every card in this deck is real stock from the vault. Draw one; if it's your grail, it's yours.
           </p>
 
           <div className="mt-10 flex flex-wrap gap-3">
@@ -305,7 +285,9 @@ export default function ShuffleDeck({ onAdd }) {
                   className="flex items-center justify-between gap-6 rounded-2xl border border-paper/10 bg-paper/[0.03] p-6"
                 >
                   <div>
-                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ash">You drew</p>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-ash">
+                      You drew · {categoryBySlug(card.category)?.name}
+                    </p>
                     <p className="mt-1 font-display text-3xl font-extrabold tracking-[-0.03em]">{card.name}</p>
                     <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.16em]" style={{ color: card.hue[0] }}>
                       {card.label} · ${card.price.toLocaleString()}

@@ -53,7 +53,13 @@ function drawSigil(ctx, cx, cy, scale, stroke) {
   ctx.restore()
 }
 
-export function makeFront({ name, hp, set, type, colors, attacks }) {
+export function makeFront(card) {
+  if (card.style === 'sport') return makeSport(card)
+  if (card.style === 'magic') return makeMagic(card)
+  return makeMonster(card)
+}
+
+function makeMonster({ name, hp, set, type, colors, attacks }) {
   const [accent, light, deep] = colors
   const [c, ctx] = canvas()
   const [m, mx] = canvas()
@@ -147,6 +153,244 @@ export function makeFront({ name, hp, set, type, colors, attacks }) {
   mx.restore()
   mx.fillStyle = '#fff'
   mx.fillRect(ART.x, ART.y + ART.h + 22, ART.w, 6)
+
+  return [toTex(c, true), toTex(m, false)]
+}
+
+function wrapText(ctx, text, x, y, maxW, lineH, maxLines = 6) {
+  const words = text.split(' ')
+  let line = ''
+  let n = 0
+  for (const w of words) {
+    const test = line ? `${line} ${w}` : w
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line, x, y + n * lineH)
+      line = w
+      if (++n >= maxLines) return
+    } else line = test
+  }
+  if (line) ctx.fillText(line, x, y + n * lineH)
+}
+
+/* ── Player card: baseball / basketball / hockey ─────────────────── */
+function makeSport({ name, number, position, team, set, colors, stats, rookie }) {
+  const [accent, light, deep] = colors
+  const [c, ctx] = canvas()
+  const [m, mx] = canvas()
+  const PH = { x: 50, y: 50, w: W - 100, h: 960 }
+
+  ctx.fillStyle = '#14110D'
+  ctx.fillRect(0, 0, W, H)
+  mx.fillStyle = '#000'
+  mx.fillRect(0, 0, W, H)
+
+  // photo area
+  ctx.save()
+  roundRect(ctx, PH.x, PH.y, PH.w, PH.h, 26)
+  ctx.clip()
+  const g = ctx.createLinearGradient(0, PH.y, PH.w * 0.6, PH.y + PH.h)
+  g.addColorStop(0, light)
+  g.addColorStop(0.45, accent)
+  g.addColorStop(1, deep)
+  ctx.fillStyle = g
+  ctx.fillRect(PH.x, PH.y, PH.w, PH.h)
+  // speed stripes
+  ctx.globalAlpha = 0.22
+  ctx.fillStyle = '#0B0A08'
+  for (let i = -12; i < 22; i++) {
+    ctx.beginPath()
+    const x0 = i * 70
+    ctx.moveTo(x0, PH.y + PH.h)
+    ctx.lineTo(x0 + 26, PH.y + PH.h)
+    ctx.lineTo(x0 + 26 + 520, PH.y)
+    ctx.lineTo(x0 + 520, PH.y)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+  // giant outlined number
+  ctx.font = '800 640px "Bricolage Grotesque", sans-serif'
+  ctx.textAlign = 'right'
+  ctx.lineWidth = 7
+  ctx.strokeStyle = 'rgba(242,236,223,0.6)'
+  ctx.strokeText(String(number), PH.x + PH.w - 20, PH.y + PH.h + 40)
+  ctx.textAlign = 'left'
+  // position chip
+  ctx.fillStyle = 'rgba(11,10,8,0.82)'
+  roundRect(ctx, PH.x + 40, PH.y + 40, 300, 66, 33)
+  ctx.fill()
+  ctx.fillStyle = '#F2ECDF'
+  ctx.font = '500 30px "IBM Plex Mono", monospace'
+  ctx.fillText(position, PH.x + 70, PH.y + 85)
+  ctx.restore()
+
+  // rookie badge
+  if (rookie) {
+    ctx.fillStyle = light
+    ctx.beginPath()
+    ctx.arc(PH.x + PH.w - 110, PH.y + 110, 74, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#0B0A08'
+    ctx.font = '800 64px "Bricolage Grotesque", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('RC', PH.x + PH.w - 110, PH.y + 132)
+    ctx.textAlign = 'left'
+  }
+
+  // name plate
+  ctx.fillStyle = accent
+  ctx.fillRect(0, PH.y + PH.h + 30, W, H - (PH.y + PH.h + 30))
+  ctx.fillStyle = '#0B0A08'
+  ctx.font = '800 92px "Bricolage Grotesque", sans-serif'
+  ctx.fillText(name.toUpperCase(), 60, PH.y + PH.h + 120)
+  ctx.font = '500 28px "IBM Plex Mono", monospace'
+  ctx.globalAlpha = 0.75
+  ctx.fillText(`${team}  ·  ${set}`, 62, PH.y + PH.h + 172)
+  ctx.globalAlpha = 1
+  // stats row
+  stats.forEach(([k, v], i) => {
+    const x = 62 + i * 300
+    const y = PH.y + PH.h + 300
+    ctx.font = '500 26px "IBM Plex Mono", monospace'
+    ctx.globalAlpha = 0.65
+    ctx.fillText(k, x, y - 62)
+    ctx.globalAlpha = 1
+    ctx.font = '800 64px "Bricolage Grotesque", sans-serif'
+    ctx.fillText(v, x, y + 12)
+  })
+
+  // foil: stripes area + badge
+  mx.save()
+  roundRect(mx, PH.x, PH.y, PH.w, PH.h, 26)
+  mx.clip()
+  mx.fillStyle = '#666'
+  mx.fillRect(PH.x, PH.y, PH.w, PH.h)
+  mx.fillStyle = '#fff'
+  for (let i = -12; i < 22; i++) {
+    mx.beginPath()
+    const x0 = i * 70
+    mx.moveTo(x0, PH.y + PH.h)
+    mx.lineTo(x0 + 26, PH.y + PH.h)
+    mx.lineTo(x0 + 26 + 520, PH.y)
+    mx.lineTo(x0 + 520, PH.y)
+    mx.fill()
+  }
+  mx.restore()
+  if (rookie) {
+    mx.fillStyle = '#fff'
+    mx.beginPath()
+    mx.arc(PH.x + PH.w - 110, PH.y + 110, 74, 0, Math.PI * 2)
+    mx.fill()
+  }
+
+  return [toTex(c, true), toTex(m, false)]
+}
+
+/* ── Magic-style card ─────────────────────────────────────────────── */
+function makeMagic({ name, mana, typeLine, rules, flavor, pt, set, colors }) {
+  const [accent, light, deep] = colors
+  const [c, ctx] = canvas()
+  const [m, mx] = canvas()
+
+  // outer frame
+  const fg = ctx.createLinearGradient(0, 0, W, H)
+  fg.addColorStop(0, light)
+  fg.addColorStop(0.5, accent)
+  fg.addColorStop(1, deep)
+  ctx.fillStyle = fg
+  ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = '#0F0D0A'
+  roundRect(ctx, 40, 40, W - 80, H - 80, 30)
+  ctx.fill()
+
+  const bar = (y, h) => {
+    ctx.fillStyle = `${accent}55`
+    roundRect(ctx, 70, y, W - 140, h, 16)
+    ctx.fill()
+  }
+
+  // title bar + mana
+  bar(70, 110)
+  ctx.fillStyle = '#F2ECDF'
+  ctx.font = '800 64px "Bricolage Grotesque", sans-serif'
+  ctx.fillText(name, 100, 148)
+  mana.forEach((col, i) => {
+    const x = W - 120 - (mana.length - 1 - i) * 62
+    ctx.fillStyle = col
+    ctx.beginPath()
+    ctx.arc(x, 125, 26, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(11,10,8,0.5)'
+    ctx.lineWidth = 3
+    ctx.stroke()
+  })
+
+  // art
+  const ART2 = { x: 70, y: 200, w: W - 140, h: 640 }
+  ctx.save()
+  roundRect(ctx, ART2.x, ART2.y, ART2.w, ART2.h, 16)
+  ctx.clip()
+  const ag = ctx.createRadialGradient(W / 2, ART2.y + ART2.h * 0.7, 20, W / 2, ART2.y + ART2.h * 0.6, ART2.w * 0.75)
+  ag.addColorStop(0, light)
+  ag.addColorStop(0.35, accent)
+  ag.addColorStop(1, deep)
+  ctx.fillStyle = ag
+  ctx.fillRect(ART2.x, ART2.y, ART2.w, ART2.h)
+  ctx.globalAlpha = 0.3
+  ctx.strokeStyle = '#F2ECDF'
+  ctx.lineWidth = 2
+  for (let r = 50; r < 800; r += 44) {
+    ctx.beginPath()
+    ctx.arc(W / 2, ART2.y + ART2.h * 0.75, r, Math.PI, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
+  ctx.restore()
+
+  // type line
+  bar(860, 84)
+  ctx.fillStyle = '#F2ECDF'
+  ctx.font = '600 40px "Bricolage Grotesque", sans-serif'
+  ctx.fillText(typeLine, 100, 916)
+  ctx.font = '500 24px "IBM Plex Mono", monospace'
+  ctx.fillStyle = light
+  ctx.textAlign = 'right'
+  ctx.fillText(set, W - 100, 914)
+  ctx.textAlign = 'left'
+
+  // rules box
+  ctx.fillStyle = 'rgba(242,236,223,0.07)'
+  roundRect(ctx, 70, 964, W - 140, 340, 16)
+  ctx.fill()
+  ctx.fillStyle = '#F2ECDF'
+  ctx.font = '400 40px "Bricolage Grotesque", sans-serif'
+  wrapText(ctx, rules, 104, 1030, W - 220, 50, 3)
+  if (flavor) {
+    ctx.fillStyle = '#8A8478'
+    ctx.font = 'italic 400 32px "Bricolage Grotesque", sans-serif'
+    wrapText(ctx, flavor, 104, 1200, W - 360, 40, 2)
+  }
+  if (pt) {
+    ctx.fillStyle = light
+    roundRect(ctx, W - 250, 1220, 160, 90, 16)
+    ctx.fill()
+    ctx.fillStyle = '#0B0A08'
+    ctx.font = '800 56px "Bricolage Grotesque", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText(pt, W - 170, 1284)
+    ctx.textAlign = 'left'
+  }
+
+  // foil: frame + art
+  mx.fillStyle = '#000'
+  mx.fillRect(0, 0, W, H)
+  mx.fillStyle = '#bbb'
+  mx.fillRect(0, 0, W, H)
+  mx.fillStyle = '#000'
+  roundRect(mx, 40, 40, W - 80, H - 80, 30)
+  mx.fill()
+  mx.fillStyle = '#fff'
+  roundRect(mx, ART2.x, ART2.y, ART2.w, ART2.h, 16)
+  mx.fill()
 
   return [toTex(c, true), toTex(m, false)]
 }

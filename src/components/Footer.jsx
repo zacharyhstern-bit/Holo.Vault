@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { CATEGORIES } from '../data/products'
 
 export default function Footer() {
   return (
@@ -9,6 +10,7 @@ export default function Footer() {
         </Link>
         <nav className="grid grid-cols-2 gap-x-12 gap-y-3 font-mono text-[12px] uppercase tracking-[0.16em] text-ash">
           {[
+            ...CATEGORIES.map((c) => [`/shop/${c.slug}`, c.name]),
             ['/drops', 'Drops'],
             ['/graded', 'Graded'],
             ['/sealed', 'Sealed'],
@@ -22,7 +24,10 @@ export default function Footer() {
       </div>
       <div className="mt-16 flex flex-col justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-ash md:flex-row">
         <p>© 2026 Holo/Vault — independent reseller</p>
-        <p>Not affiliated with Nintendo, Creatures Inc. or The Pokémon Company.</p>
+        <p className="max-w-2xl md:text-right">
+          Independent reseller. Not affiliated with or endorsed by Nintendo, The Pokémon Company, Wizards of the Coast, MLB, the
+          NBA, the NHL or any card manufacturer.
+        </p>
       </div>
     </footer>
   )

@@ -39,7 +39,7 @@ export function BagProvider({ children }) {
       const max = p.stock ?? Infinity
       if (found) return list.map((i) => (i.id === p.id ? { ...i, qty: Math.min(i.qty + 1, max) } : i))
       const label = p.label ?? (p.grader ? `${p.grader} ${p.grade}` : p.grade)
-      return [...list, { id: p.id, name: p.name, price: p.price, hue: p.hue, kind: p.kind, label, stock: p.stock, qty: 1 }]
+      return [...list, { ...p, label, qty: 1 }]
     })
     setPulse((n) => n + 1)
   }, [])

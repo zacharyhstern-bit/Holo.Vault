@@ -1,24 +1,14 @@
 import { useRef, useState } from 'react'
 import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate, AnimatePresence } from 'framer-motion'
 import { EASE_OUT_EXPO, SPRING_SOFT } from '../lib/motion'
+import CardFace from './CardFace'
+import { categoryBySlug } from '../data/products'
 
 /* ── Art for each product kind ───────────────────────────────────── */
 function CardArt({ p }) {
   return (
-    <div className="relative aspect-[5/7] overflow-hidden rounded-[18px] border border-paper/10 bg-[#14110D]">
-      <div
-        className="absolute inset-[7%] bottom-[38%] overflow-hidden rounded-xl"
-        style={{ background: `radial-gradient(circle at 50% 60%, ${p.hue[1]}, ${p.hue[0]} 35%, #0B0A08 80%)` }}
-      >
-        <Rings />
-      </div>
-      <div className="absolute inset-x-[7%] bottom-[7%] font-mono text-[11px] uppercase tracking-[0.14em] text-ash">
-        <p className="font-display text-2xl font-extrabold normal-case tracking-[-0.02em] text-paper">{p.name}</p>
-        <p className="mt-2 flex justify-between">
-          <span>{p.set}</span>
-          <span className="text-paper">{p.grade}</span>
-        </p>
-      </div>
+    <div className="relative aspect-[5/7] overflow-hidden rounded-[18px] border border-paper/10">
+      <CardFace p={p} />
     </div>
   )
 }
@@ -28,40 +18,32 @@ function SlabArt({ p }) {
     <div className="relative aspect-[5/8] overflow-hidden rounded-[14px] border-2 border-paper/20 bg-paper/[0.04] p-[6%] shadow-[inset_0_0_40px_rgba(242,236,223,0.06)]">
       {/* grading label */}
       <div className="mb-[6%] flex items-center justify-between rounded-md bg-paper px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink">
-        <div>
+        <div className="min-w-0">
           <p className="font-medium">{p.grader}</p>
-          <p className="opacity-60">
+          <p className="truncate opacity-60">
             {p.name} · {p.set}
           </p>
         </div>
         <p className="font-display text-3xl font-extrabold tracking-[-0.04em]">{p.grade}</p>
       </div>
       {/* card inside the case */}
-      <div className="relative h-[calc(100%-4.2rem)] overflow-hidden rounded-lg border border-paper/10 bg-[#14110D]">
-        <div
-          className="absolute inset-[8%] bottom-[30%] overflow-hidden rounded-md"
-          style={{ background: `radial-gradient(circle at 50% 60%, ${p.hue[1]}, ${p.hue[0]} 35%, #0B0A08 80%)` }}
-        >
-          <Rings />
-        </div>
-        <p className="absolute inset-x-[8%] bottom-[9%] font-display text-lg font-extrabold tracking-[-0.02em]">{p.name}</p>
+      <div className="relative mx-auto aspect-[5/7] h-[calc(100%-4.2rem)] overflow-hidden rounded-lg border border-paper/10">
+        <CardFace p={p} />
       </div>
     </div>
   )
 }
 
 function BoxArt({ p }) {
+  const cat = categoryBySlug(p.category)
   return (
     <div className="relative aspect-[4/5] overflow-hidden rounded-[18px] border border-paper/10 bg-[#14110D]">
-      <div
-        className="absolute inset-0"
-        style={{ background: `linear-gradient(160deg, ${p.hue[0]} 0%, #0B0A08 70%)` }}
-      />
+      <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${p.hue[0]} 0%, #0B0A08 70%)` }} />
       <div className="absolute -right-[20%] top-[18%] aspect-square w-[85%] opacity-80">
         <Rings tone="rgba(242,236,223,0.35)" />
       </div>
       <div className="absolute inset-x-0 top-0 flex justify-between bg-ink/80 px-5 py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-paper backdrop-blur">
-        <span>Holo/Vault</span>
+        <span>{cat?.name ?? 'Holo/Vault'}</span>
         <span style={{ color: p.hue[1] }}>Factory sealed</span>
       </div>
       <div className="absolute inset-x-5 bottom-5">
@@ -85,7 +67,7 @@ function Rings({ tone = 'rgba(11,10,8,0.4)' }) {
 const ART = { card: CardArt, slab: SlabArt, box: BoxArt }
 
 /* ── Tilting product tile with foil, glare and add-to-bag ─────────── */
-export default function ProductCard({ p, onAdd, className = '' }) {
+export default function ProductCard({ p, onAdd, className = '', showCategory = false }) {
   const ref = useRef(null)
   const [added, setAdded] = useState(false)
   const mx = useMotionValue(0.5)
@@ -147,7 +129,10 @@ export default function ProductCard({ p, onAdd, className = '' }) {
       <div className="mt-5 flex items-center justify-between gap-4">
         <div>
           <p className="font-display text-3xl font-extrabold tracking-[-0.03em]">${p.price.toLocaleString()}</p>
-          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ash">{stockLine}</p>
+          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-ash">
+            {showCategory && categoryBySlug(p.category) ? `${categoryBySlug(p.category).name} · ` : ''}
+            {stockLine}
+          </p>
         </div>
         <motion.button
           data-cursor=""

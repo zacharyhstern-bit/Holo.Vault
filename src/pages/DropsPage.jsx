@@ -91,7 +91,7 @@ export default function DropsPage({ onAdd }) {
         <RevealGrid className="grid gap-x-8 gap-y-16 sm:grid-cols-2 lg:grid-cols-3">
           {DROP_ITEMS.map((p) => (
             <motion.div key={p.id} variants={revealItem}>
-              <ProductCard p={p} onAdd={onAdd} />
+              <ProductCard p={p} onAdd={onAdd} showCategory />
             </motion.div>
           ))}
         </RevealGrid>

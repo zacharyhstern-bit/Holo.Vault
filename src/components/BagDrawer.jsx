@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBag } from '../lib/bag'
+import CardFace from './CardFace'
+import { categoryBySlug } from '../data/products'
 import { EASE_OUT_EXPO, EASE_IN_OUT } from '../lib/motion'
 
 const money = (v) => `$${v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
@@ -15,10 +17,11 @@ function Thumb({ item }) {
         box ? 'h-20 w-16 rounded-lg' : 'h-20 w-[57px] rounded-md'
       }`}
     >
-      <div
-        className="absolute inset-[8%] bottom-[30%] rounded"
-        style={{ background: `radial-gradient(circle at 50% 60%, ${b}, ${a} 40%, #0B0A08 85%)` }}
-      />
+      {box || !item.style ? (
+        <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${a}, #0B0A08 80%)` }} />
+      ) : (
+        <CardFace p={item} />
+      )}
     </div>
   )
 }
@@ -141,7 +144,9 @@ export default function BagDrawer() {
                             <div className="flex justify-between gap-3">
                               <div className="min-w-0">
                                 <p className="truncate font-display text-xl font-extrabold tracking-[-0.02em]">{item.name}</p>
-                                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ash">{item.label}</p>
+                                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ash">
+                                  {[categoryBySlug(item.category)?.name, item.label].filter(Boolean).join(' · ')}
+                                </p>
                               </div>
                               <p className="font-display text-xl font-extrabold tabular-nums">{money(item.price * item.qty)}</p>
                             </div>
